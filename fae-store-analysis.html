@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Frankie's Store Teardown</title>
+<meta name="description" content="Technical audit of frankiesautoelectrics.com.au - 21 evidence-backed findings, a seven-competitor benchmark and a 90-day plan. Prepared by RM, 31 August 2026.">
+<meta name="author" content="RM">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%94%8C%3C/text%3E%3C/svg%3E">
+<style>
+  /* ---------- tokens: light (default, un-stamped) ---------- */
+  :root {
+    --ground:      #F2F5F8;
+    --surface:     #FFFFFF;
+    --surface-2:   #E9EFF4;
+    --ink:         #0D1620;
+    --ink-2:       #46566A;
+    --ink-3:       #6F8096;
+    --rule:        #D5DEE7;
+    --rule-strong: #B9C6D3;
+    --accent:      #0F5C7E;
+    --accent-2:    #14789F;
+    --accent-soft: #E0EEF5;
+    --crit:        #BC3226;
+    --crit-soft:   #FBE7E4;
+    --high:        #9E6209;
+    --high-soft:   #FBF0DC;
+    --med:         #2A6BA3;
+    --med-soft:    #E3EEF8;
+    --good:        #2A7449;
+    --good-soft:   #E2F1E7;
+    --shadow:      0 1px 2px rgba(13,22,32,.06), 0 8px 24px -12px rgba(13,22,32,.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0A1017;
+      --surface:     #121A24;
+      --surface-2:   #1A2530;
+      --ink:         #E9EFF5;
+      --ink-2:       #A6B5C5;
+      --ink-3:       #7B8B9E;
+      --rule:        #243140;
+      --rule-strong: #33445699;
+      --accent:      #4FB3D9;
+      --accent-2:    #6FC7E8;
+      --accent-soft: #0E2E3D;
+      --crit:        #F07764;
+      --crit-soft:   #331613;
+      --high:        #E3A93F;
+      --high-soft:   #302510;
+      --med:         #74B0E2;
+      --med-soft:    #14293C;
+      --good:        #5FC08A;
+      --good-soft:   #122C1E;
+      --shadow:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:      #0A1017;
+    --surface:     #121A24;
+    --surface-2:   #1A2530;
+    --ink:         #E9EFF5;
+    --ink-2:       #A6B5C5;
+    --ink-3:       #7B8B9E;
+    --rule:        #243140;
+    --rule-strong: #33445699;
+    --accent:      #4FB3D9;
+    --accent-2:    #6FC7E8;
+    --accent-soft: #0E2E3D;
+    --crit:        #F07764;
+    --crit-soft:   #331613;
+    --high:        #E3A93F;
+    --high-soft:   #302510;
+    --med:         #74B0E2;
+    --med-soft:    #14293C;
+    --good:        #5FC08A;
+    --good-soft:   #122C1E;
+    --shadow:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: Archivo, ui-sans-serif, system-ui, sans-serif;
+    text-wrap: balance;
+    margin: 0;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+  }
+
+  code, .mono, .code {
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--accent-2);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* ---------- shell ---------- */
+  .shell {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    gap: 0;
+    max-width: 1240px;
+    margin: 0 auto;
+    align-items: start;
+  }
+
+  .rail {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 34px 22px 34px 28px;
+    border-right: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .rail__mark {
+    font-family: Archivo, sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .rail__mark span { display: block; color: var(--ink-3); font-weight: 600; font-size: 11px; letter-spacing: .09em; text-transform: uppercase; margin-top: 5px; font-family: "IBM Plex Mono", monospace; }
+  .rail nav { display: flex; flex-direction: column; gap: 1px; }
+  .rail nav a {
+    display: flex;
+    gap: 9px;
+    align-items: baseline;
+    text-decoration: none;
+    color: var(--ink-2);
+    font-size: 13.5px;
+    padding: 6px 8px 6px 0;
+    border-left: 2px solid transparent;
+    padding-left: 10px;
+    transition: color .15s, border-color .15s;
+  }
+  .rail nav a .n { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink-3); }
+  .rail nav a:hover { color: var(--ink); }
+  .rail nav a.on { color: var(--accent); border-left-color: var(--accent); font-weight: 600; }
+  .rail nav a.on .n { color: var(--accent); }
+
+  main { padding: 0 44px 120px; min-width: 0; }
+
+  /* ---------- masthead ---------- */
+  .mast { padding: 64px 0 40px; border-bottom: 3px solid var(--ink); }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 18px;
+  }
+  .mast h1 { font-size: clamp(38px, 5.4vw, 62px); font-weight: 800; letter-spacing: -0.032em; }
+  .mast .deck {
+    font-size: clamp(17px, 1.9vw, 20px);
+    color: var(--ink-2);
+    max-width: 60ch;
+    margin-top: 20px;
+    line-height: 1.5;
+  }
+  .mast .deck strong { color: var(--ink); font-weight: 600; }
+  .credit {
+    margin-top: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 26px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .credit b { color: var(--ink-2); font-weight: 500; }
+
+  /* ---------- sections ---------- */
+  section { padding: 56px 0 0; scroll-margin-top: 24px; }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px; }
+  .sec-head .num {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: .06em;
+    padding-top: 6px;
+  }
+  section > h2 { font-size: clamp(25px, 3vw, 33px); font-weight: 700; letter-spacing: -0.025em; }
+  .lede { color: var(--ink-2); max-width: 68ch; margin: 14px 0 0; font-size: 16.5px; }
+  p { max-width: 68ch; }
+  .prose p + p { margin-top: 14px; }
+
+  /* ---------- stat strip ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    margin-top: 30px;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .stat { background: var(--surface); padding: 18px 16px 16px; }
+  .stat .v {
+    font-family: Archivo, sans-serif;
+    font-size: 27px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    display: block;
+    line-height: 1.05;
+  }
+  .stat .k {
+    font-size: 12.5px;
+    color: var(--ink-2);
+    margin-top: 7px;
+    display: block;
+    line-height: 1.35;
+  }
+  .stat.is-bad .v { color: var(--crit); }
+  .stat.is-warn .v { color: var(--high); }
+  .stat.is-good .v { color: var(--good); }
+
+  /* ---------- callout ---------- */
+  .callout {
+    margin-top: 30px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+    border-radius: 3px;
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+  }
+  .callout h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .callout p { color: var(--ink-2); font-size: 15.5px; }
+  .callout.is-crit { border-left-color: var(--crit); }
+  .callout.is-good { border-left-color: var(--good); }
+
+  /* ---------- severity legend ---------- */
+  .legend {
+    margin-top: 26px;
+    padding: 16px 18px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 22px;
+    align-items: center;
+  }
+  .legend .lbl {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 600;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 3px 9px 3px 7px;
+    border-radius: 2px;
+    white-space: nowrap;
+  }
+  .chip::before { content: ""; width: 7px; height: 7px; border-radius: 1px; background: currentColor; flex: none; }
+  .chip.crit { color: var(--crit); background: var(--crit-soft); }
+  .chip.high { color: var(--high); background: var(--high-soft); }
+  .chip.med  { color: var(--med);  background: var(--med-soft); }
+  .chip.good { color: var(--good); background: var(--good-soft); }
+
+  /* ---------- findings ---------- */
+  .group-head {
+    margin-top: 44px;
+    padding-bottom: 9px;
+    border-bottom: 1px solid var(--rule-strong);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .group-head h3 {
+    font-size: 13px;
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 600;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  .group-head .count { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-3); }
+
+  .finds { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; }
+
+  .find {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 20px 22px;
+    box-shadow: var(--shadow);
+  }
+  .find__top { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; margin-bottom: 10px; }
+  .find__code {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--ink-3);
+    letter-spacing: .05em;
+  }
+  .find h4 { font-size: 18.5px; font-weight: 700; letter-spacing: -0.018em; width: 100%; }
+  .find__body { margin-top: 12px; display: flex; flex-direction: column; gap: 11px; }
+  .row { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; align-items: start; }
+  .row > dt {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 600;
+    padding-top: 3px;
+  }
+  .row > dd { margin: 0; font-size: 15px; color: var(--ink-2); max-width: 66ch; }
+  .row > dd strong { color: var(--ink); font-weight: 600; }
+  .row.ev > dd { color: var(--ink); }
+  .ev code, dd code {
+    font-size: 13px;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 2px;
+    color: var(--ink);
+  }
+  .find.fix dd.fixtext { color: var(--ink); }
+
+  /* ---------- tables ---------- */
+  .tablewrap { overflow-x: auto; margin-top: 26px; border: 1px solid var(--rule); border-radius: 3px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 720px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 600;
+    background: var(--surface-2);
+    white-space: nowrap;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.us { background: var(--accent-soft); }
+  tbody tr.us td { font-weight: 500; }
+  td.name { font-weight: 600; color: var(--ink); white-space: nowrap; }
+  .yes { color: var(--good); font-weight: 600; }
+  .no  { color: var(--crit); font-weight: 600; }
+  .part { color: var(--high); font-weight: 600; }
+
+  /* ---------- plan ---------- */
+  .plan { display: flex; flex-direction: column; gap: 16px; margin-top: 28px; }
+  .phase {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+    border-top: 3px solid var(--accent);
+  }
+  .phase__head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  .phase__days {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .phase h3 { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
+  .phase > p { color: var(--ink-2); font-size: 15px; margin: 8px 0 0; }
+  .phase ul { margin: 14px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; }
+  .phase li { position: relative; padding-left: 22px; font-size: 15px; color: var(--ink-2); max-width: 66ch; }
+  .phase li::before {
+    content: "";
+    position: absolute;
+    left: 4px; top: 9px;
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 1px;
+  }
+  .phase li strong { color: var(--ink); font-weight: 600; }
+  .measure {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--rule-strong);
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+  .measure b {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+  }
+
+  /* ---------- two-col cards ---------- */
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 14px; margin-top: 26px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 20px 22px;
+  }
+  .card h4 { font-size: 16.5px; font-weight: 700; margin-bottom: 8px; }
+  .card p { font-size: 14.5px; color: var(--ink-2); margin: 0; }
+  .card ul { margin: 10px 0 0; padding-left: 18px; font-size: 14.5px; color: var(--ink-2); }
+  .card li { margin-bottom: 5px; }
+
+  /* ---------- method / footer ---------- */
+  .method { background: var(--surface-2); border-radius: 3px; padding: 26px 28px; margin-top: 28px; }
+  .method h4 { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+  .method p, .method li { font-size: 14.5px; color: var(--ink-2); }
+  .method ul { padding-left: 18px; margin: 8px 0 0; }
+  .method li { margin-bottom: 6px; }
+
+  footer {
+    margin-top: 70px;
+    padding-top: 26px;
+    border-top: 3px solid var(--ink);
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+  footer p { max-width: 64ch; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+  }
+
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .rail { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--rule); padding: 22px 20px; }
+    .rail nav { flex-direction: row; flex-wrap: wrap; gap: 4px 14px; }
+    .rail nav a { border-left: none; padding-left: 0; }
+    .rail nav a.on { border-left: none; }
+    main { padding: 0 20px 80px; }
+    .mast { padding-top: 34px; }
+    .row { grid-template-columns: 1fr; gap: 4px; }
+  }
+</style>
+<style>
+  /* print / save-as-PDF: drop the app shell, keep the document */
+  @media print {
+    @page { margin: 14mm 12mm; }
+    body { background: #fff; font-size: 10.5pt; }
+    .rail { display: none; }
+    .shell { display: block; max-width: none; }
+    main { padding: 0; }
+    section { padding-top: 22px; }
+    .find, .phase, .card, .callout, .method, .stat, .tablewrap {
+      break-inside: avoid; page-break-inside: avoid; box-shadow: none;
+    }
+    .mast { padding-top: 0; }
+    h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+    table { min-width: 0; font-size: 9pt; }
+    a { text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="rail">
+    <div class="rail__mark">
+      Store Teardown
+      <span>Frankie's Auto Electrics</span>
+    </div>
+    <nav id="nav">
+      <a href="#summary"><span class="n">01</span> Summary</a>
+      <a href="#working"><span class="n">02</span> Already working</a>
+      <a href="#fitment"><span class="n">03</span> The fitment gap</a>
+      <a href="#findings"><span class="n">04</span> Findings</a>
+      <a href="#market"><span class="n">05</span> Competitors</a>
+      <a href="#plan"><span class="n">06</span> First 90 days</a>
+      <a href="#need"><span class="n">07</span> What I'd need</a>
+      <a href="#method"><span class="n">08</span> Method &amp; limits</a>
+    </nav>
+  </aside>
+
+  <main>
+
+    <header class="mast">
+      <span class="eyebrow">Unsolicited audit · E-Commerce &amp; Digital Growth Manager</span>
+      <h1>You already own the hardest asset. It just isn't switched on.</h1>
+      <p class="deck">A technical teardown of <strong>frankiesautoelectrics.com.au</strong> — 17,491 products, 750 collections, and a vehicle-fitment system that was built, filled with data, and then connected to <strong>one</strong> category out of seven hundred and fifty.</p>
+      <div class="credit">
+        <span><b>Prepared by</b> RM</span>
+        <span><b>Date</b> 31 August 2026</span>
+        <span><b>Access used</b> None — public pages only</span>
+        <span><b>Platform</b> Shopify</span>
+      </div>
+    </header>
+
+    <section id="summary">
+      <div class="sec-head"><span class="num">01</span></div>
+      <h2>What I found in a day, from the outside</h2>
+      <p class="lede">The ad says you want someone who sees things, questions them and fixes them without being told. So rather than describe that, here is the first pass. Everything below was measured on the live site — no analytics access, no admin, no conversations.</p>
+
+      <div class="stats">
+        <div class="stat"><span class="v">17,491</span><span class="k">Products live on the site</span></div>
+        <div class="stat"><span class="v">750</span><span class="k">Collections built</span></div>
+        <div class="stat is-bad"><span class="v">1</span><span class="k">Collections with a vehicle-make filter</span></div>
+        <div class="stat is-bad"><span class="v">6,441</span><span class="k">Products in a category with zero filters</span></div>
+        <div class="stat is-warn"><span class="v">66%</span><span class="k">Products with only one image</span></div>
+        <div class="stat is-bad"><span class="v">2</span><span class="k">Blog articles, total, across three blogs</span></div>
+      </div>
+
+      <div class="callout is-crit">
+        <h3>The single biggest finding</h3>
+        <p>Your <code>custom.make</code> metafield already exists, already holds 31 vehicle makes, and already powers a working make filter — on the <em>Fascias and Harnesses</em> collection. It is live on that one collection and nowhere else. Meanwhile <em>In-Car Entertainment</em>, your largest category at 6,441 products, ships filter CSS and JavaScript to every visitor and renders no filter controls at all. Someone did the hard part and stopped. That is not a rebuild — that is a rollout.</p>
+      </div>
+
+      <div class="callout">
+        <h3>And the thing nobody in your market has done</h3>
+        <p>I checked all seven competitors you named. Only <strong>one</strong> of them — Automotive Superstore — has a real vehicle fitment selector. Strathfield advertises "What Fits My Car" in their top navigation and the page returns <em>No products found</em>. JB Hi-Fi, Jaycar, Elite Car Audio and Bankstown Sound have nothing. Your product titles already carry the fitment data — "Toyota Hilux 2015-2020", "Honda CRV RE 2007-2011", "Prado 150 Series". It's sitting in text strings instead of in a filter.</p>
+      </div>
+    </section>
+
+    <section id="working">
+      <div class="sec-head"><span class="num">02</span></div>
+      <h2>What's already working — so nobody wastes money re-doing it</h2>
+      <p class="lede">A good audit tells you where <em>not</em> to spend. Four things on this site are genuinely done well, and two of them are better than what most of your competitors have.</p>
+
+      <div class="cols">
+        <div class="card">
+          <h4>Product descriptions are not the problem</h4>
+          <p>I sampled 3,000 products. Median description length is <strong>1,409 characters</strong> and 69% run over 800. Only 1.5% are effectively empty. Whoever has been writing these has done real work. Don't let anyone sell you a "rewrite all your product copy" project — the gap is structured data, not prose.</p>
+        </div>
+        <div class="card">
+          <h4>Search is better than you'd expect</h4>
+          <p>Searchanise is doing a good job. "hilux 2018 head unit", "prado 150 stereo" and "ranger px3 speakers" all return sensible, on-model results. This is the one area where you're ahead of Bankstown Sound and Elite Car Audio. It matches on text, not fitment, so it can serve the wrong generation — but the foundation is sound.</p>
+        </div>
+        <div class="card">
+          <h4>Category SEO has been started properly</h4>
+          <p>Your top collections carry hand-written meta descriptions and FAQ schema — <em>Fascias and Harnesses</em> has 3,400 characters of category copy, <em>Car Speakers</em> has over 18,000. Product pages carry correct <code>Product</code> and <code>BreadcrumbList</code> structured data with SKU and brand. That's ahead of most stores this size.</p>
+        </div>
+        <div class="card is-good">
+          <h4>You already built the booking system</h4>
+          <p>The Code Safe page has a live appointment form capturing <code>car_make</code>, <code>car_model</code>, <code>appointment_date</code> and <code>shop_location</code>. That is a working vehicle-aware booking flow. It exists for immobilisers and Interlock — and nowhere for head units, speakers or dash cams, which is where the volume is.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="fitment">
+      <div class="sec-head"><span class="num">03</span></div>
+      <h2>The fitment gap is the whole opportunity</h2>
+      <p class="lede">Everything else in this document is housekeeping. This is the one that changes the revenue line, and it's the one your competitors have left open.</p>
+
+      <div class="prose">
+        <p>A customer with a 2018 Hilux does not want to browse 6,441 in-car entertainment products. They want the four head units that fit their truck, the fascia that goes with it, the harness, and a price to have it fitted. Right now the site cannot answer that question, so they ring you — which the ad specifically says shouldn't have to happen — or they go to Automotive Superstore, who will answer it in two clicks with a rego lookup and a "Fitment guaranteed" badge.</p>
+        <p>The reason this is an opportunity rather than a problem is that <strong>the expensive half is already done</strong>. The compatibility data exists in three places: in your product titles, in the <code>custom.make</code> metafield, and in your "Vehicle Specific" navigation branches. What's missing is the wiring between them.</p>
+      </div>
+
+      <div class="cols">
+        <div class="card">
+          <h4>Asset 1 · The data is in your titles</h4>
+          <p>Product names already encode make, model and year range: <em>"Aerpro AMDTO44 10" Multimedia Receiver Kit Toyota Camry 2012-2017"</em>. Thousands of them. That is a parseable dataset, not a data-entry project.</p>
+        </div>
+        <div class="card">
+          <h4>Asset 2 · The metafield exists</h4>
+          <p><code>custom.make</code> is populated with 31 makes and renders as a working filter on Fascias and Harnesses. The field, the values and the theme code are all in place.</p>
+        </div>
+        <div class="card">
+          <h4>Asset 3 · The taxonomy anticipates it</h4>
+          <p>Your menu already has <em>Vehicle Specific</em> head units, <em>Vehicle Specific Speaker Spacers</em> and <em>Vehicle Specific Speaker Adaptors</em>. The merchandising logic is there; the filtering isn't.</p>
+        </div>
+        <div class="card">
+          <h4>Asset 4 · The booking form works</h4>
+          <p>Code Safe already captures make, model, date and location. Point that same pattern at car audio and you have installation booking — which none of the seven competitors offers properly.</p>
+        </div>
+      </div>
+
+      <div class="callout is-crit">
+        <h3>The data needs cleaning before it's rolled out, though</h3>
+        <p>The live make filter has errors visible from the front end: <code>Mercedes</code> and <code>Mercedes Benz</code> exist as two separate makes, <code>Landrover</code> is missing its space, and <code>Falcon</code> is listed as a make when it is a Ford model. Rolling this out across 750 collections before fixing the value list would multiply four errors into four hundred. That's an afternoon of work to prevent a month of cleanup.</p>
+      </div>
+    </section>
+
+    <section id="findings">
+      <div class="sec-head"><span class="num">04</span></div>
+      <h2>Findings</h2>
+      <p class="lede">Twenty-one issues, graded by what they cost you. Every one includes the evidence I measured it from, so you can check any of them yourself in about a minute.</p>
+
+      <div class="legend">
+        <span class="lbl">Severity</span>
+        <span class="chip crit">Critical · costs sales now</span>
+        <span class="chip high">High · compounding</span>
+        <span class="chip med">Medium · fix in sequence</span>
+        <span class="chip good">Strength · leave alone</span>
+      </div>
+
+      <!-- NAVIGATION & FITMENT -->
+      <div class="group-head">
+        <h3>Navigation, filtering &amp; fitment</h3>
+        <span class="count">4 findings</span>
+      </div>
+      <div class="finds">
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">NAV-01</span><span class="chip crit">Critical</span>
+            <h4>Your largest category has no filters at all</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd><em>In-Car Entertainment</em> holds <strong>6,441 products</strong> and renders <strong>zero</strong> filter controls. I confirmed this twice — in the raw HTML and on the rendered page. The theme still loads <code>collection-filter.css</code> and <code>collection-filter.js</code> on that page, so every visitor downloads a filter system that displays nothing.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>A shopper landing on your biggest category can sort by price or scroll. That is the entire toolkit. This is the highest-traffic, highest-intent page on the site.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Enable the existing filter set on this collection. The code is already being served to the page.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">FIT-01</span><span class="chip crit">Critical</span>
+            <h4>No vehicle fitment selector anywhere on the site</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>No "shop by vehicle", no "select your vehicle", no year/make/model picker, no rego lookup on any page tested.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Every fitment question becomes a phone call, an email, or a lost sale. It also means you cannot compete for the searches that convert best — the ones with a vehicle in them.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Two-stage. Stage one is a make/model filter on the main collections using the metafield you already have. Stage two is a persistent vehicle selector. Automotive Superstore is the benchmark; nobody else in your set is close.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">FIT-02</span><span class="chip crit">Critical</span>
+            <h4>The make filter you built is live on one collection out of 750</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd><code>filter.p.m.custom.make</code> appears on <em>Fascias and Harnesses</em> with 31 make values. I tested twelve major collections — <em>Car Speakers</em>, <em>Batteries</em>, <em>Lighting</em>, <em>4WD and Caravan</em>, <em>Marine</em>, <em>Auto Electrical</em>, <em>Brake Parts</em> and others — and none of them offer it.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>You paid for this capability and are using less than 1% of it.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Clean the value list, backfill the metafield from product titles, then enable the filter across every vehicle-relevant collection.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">NAV-02</span><span class="chip high">High</span>
+            <h4>The product-type filter has 198 options, many of them duplicates</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>On one collection the <code>product_type</code> facet offers 198 values including <code>9 Inch Fascia Kit with Integration Harness</code>, <code>9-Inch Fascia Kit with Integration Harnesses</code>, <code>9-Inch Installation Kit</code>, <code>9-Inch Head Unit Installation Kit</code> and <code>9/10-Inch Head Unit Installation Kit</code> as separate options. Across the catalogue there are <strong>367 distinct product types</strong>.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>A filter with 198 near-identical options is worse than no filter — it makes the customer do the disambiguation work.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Collapse to a controlled vocabulary of roughly 60–80 types and enforce it on import. This is a mapping spreadsheet plus a bulk edit, not a rebuild.</dd></div>
+          </dl>
+        </div>
+      </div>
+
+      <!-- CATALOGUE -->
+      <div class="group-head">
+        <h3>Catalogue &amp; product data</h3>
+        <span class="count">4 findings</span>
+      </div>
+      <div class="finds">
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">CAT-01</span><span class="chip high">High</span>
+            <h4>Two thirds of your products have exactly one image</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>From a 3,000-product sample: <strong>66.4%</strong> have a single image, average is 2.53, and only 29% have four or more.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Image count correlates directly with conversion on considered purchases. Jaycar runs 4–7 images per product; Bankstown Sound runs one, and it's their most obvious weakness.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Pull additional supplier images via feed for the top 500 products by revenue first. Don't touch the long tail.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">CAT-02</span><span class="chip high">High</span>
+            <h4>No structured specification table on product pages</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>Specifications appear inside description prose. No spec table markup found on the product pages tested.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Two costs. Customers can't compare products, and you can't build technical filters — RMS power, DIN size, screen size, impedance — because the data isn't in fields. Jaycar publishes full Thiele-Small parameters plus mounting and cutout diameters; JB Hi-Fi publishes grouped spec tables on every head unit.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Metafield-driven spec table, populated for the top categories first. This unlocks CAT-03 and the technical filters in one move.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">CAT-03</span><span class="chip high">High</span>
+            <h4>One product in five has no product type assigned</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd><strong>20.8%</strong> of sampled products have an empty <code>product_type</code> — roughly 3,600 products catalogue-wide.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Those products can't be filtered, can't be reliably merchandised into automated collections, and are hard to find unless you search their exact name.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Backfill against the cleaned vocabulary from NAV-02. Same project, run once.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">CAT-04</span><span class="chip med">Medium</span>
+            <h4>Heavy supplier concentration worth a commercial conversation</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>Aerpro accounts for <strong>911 of 3,000</strong> sampled products — around 30% of the catalogue. 104 vendors in total.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Not a fault, but it's a margin and negotiation question I'd want the numbers behind. It also concentrates risk if terms or availability change.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Nothing on the website. This is a buying discussion, and I'd need cost data to have it properly.</dd></div>
+          </dl>
+        </div>
+      </div>
+
+      <!-- SEO -->
+      <div class="group-head">
+        <h3>SEO &amp; content</h3>
+        <span class="count">7 findings</span>
+      </div>
+      <div class="finds">
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">SEO-01</span><span class="chip crit">Critical</span>
+            <h4>Your homepage title is cut off mid-sentence</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>The live title is <code>Frankies Auto Electrics &amp; Car Audio | Your One-Stop Shop for Car</code>. It ends there. "for Car".</dd></div>
+            <div class="row"><dt>Impact</dt><dd>This is the first thing every customer sees in Google, in a shared link, and in a browser tab. It reads as unfinished.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Ten minutes. And it should carry the location — no competitor in your set owns "Wollongong" or "Illawarra" in their title tag.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">SEO-02</span><span class="chip high">High</span>
+            <h4>Two blog articles exist. Across three blogs.</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>Three blogs are set up — <em>Car Care</em>, <em>Product Guides</em>, <em>Gift Guides</em>. Between them they contain <strong>two articles</strong>. Gift Guides is empty. The most recent car care post is from November 2025.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Autobarn has roughly 50 evergreen "Know How" articles. Strathfield publishes vehicle-specific install case studies about weekly. Bankstown Sound has ten, including a Hyundai i30 upgrade guide that functions as a fitment tool made of words. You are not in this race.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Vehicle-specific upgrade guides for the vehicles actually driven in the Illawarra — Hilux, Ranger, Prado, Triton, D-Max. Name the model years, which Bankstown Sound doesn't, and link each guide from the matching collection.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">SEO-03</span><span class="chip high">High</span>
+            <h4>Judge.me is installed but no star ratings reach Google</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>Judge.me loads on product pages. The <code>Product</code> structured data contains no <code>aggregateRating</code>, and no review data surfaced on the products tested.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>No stars in search results. Worth noting: every competitor I checked has the same problem — Jaycar and Bankstown Sound both have empty review widgets. Whoever fills theirs first gets the visual advantage in the results page.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Turn on post-purchase review requests and confirm the rating snippet is emitted. You have 30 years of customers to ask.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">SEO-04</span><span class="chip med">Medium</span>
+            <h4>Key pages have weak or missing metadata</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>The contact page's title is just <code>Contact</code> with no meta description. The about page is titled <code>Welcome To Frankies Auto Electrics.</code> The <em>Marine</em> collection title runs 99 characters and will truncate in results; <em>CB/UHF Radios and Accessories</em> runs 29 with no brand name.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Your contact page is a local-search asset with a location, a phone number and 30 years of history behind it. Right now it's titled "Contact".</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Template the patterns, then hand-write the top 50 collections. A day's work.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">SEO-05</span><span class="chip med">Medium</span>
+            <h4>The site contradicts itself on how long you've been trading</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>The homepage says <em>"Serving Illawarra for Over 30 Years"</em>. The about page headline says <em>"Your Trusted Auto Electrical Experts for Over a Decade"</em>.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Small on its own, but it's the kind of thing a careful customer notices, and it undersells the strongest thing you have. Thirty years in the Illawarra is not a detail — it's the reason to buy from you instead of Automotive Superstore.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Pick the true number and use it consistently, including in the homepage title tag.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">SEO-06</span><span class="chip med">Medium</span>
+            <h4>The homepage has five H1s and no H2s</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>Five <code>&lt;h1&gt;</code> elements, zero <code>&lt;h2&gt;</code>. The about page has five H1s of its own, the first claiming "Australia's top automotive marketplace".</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Minor ranking effect, real accessibility effect — screen reader users navigate by heading level. Also, that claim sits oddly against a 30-year Illawarra story, which is the more credible and more defensible position.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Theme-level heading correction. One change, applies everywhere.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">SEO-07</span><span class="chip med">Medium</span>
+            <h4>261 collections hold fewer than ten products</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>Of 750 collections: <strong>261</strong> have under 10 products, <strong>150</strong> have under 5, and <strong>9</strong> are empty.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Thin pages dilute crawl budget and give customers dead ends. Some are legitimately niche — "13-inch subwoofers" only has two products because only two exist — so this needs judgement, not a blanket delete.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Audit against search demand. Merge, redirect or noindex the ones with no traffic and no stock story.</dd></div>
+          </dl>
+        </div>
+      </div>
+
+      <!-- TECHNICAL -->
+      <div class="group-head">
+        <h3>Technical performance</h3>
+        <span class="count">4 findings</span>
+      </div>
+      <div class="finds">
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">TEC-01</span><span class="chip crit">Critical</span>
+            <h4>The homepage ships a megabyte of HTML and 92 script tags</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>Raw homepage HTML measures <strong>1,023 KB</strong> before any assets load. It contains <strong>92 script tags</strong>, 49 of them external, plus 121 KB of inline JavaScript. Server response time is fine — TTFB around 150 ms — so this is entirely front-end weight.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>On my first cache-cold load the homepage took over 12 seconds to reach DOM-ready. A collection page came in around 3.6 seconds. Treat these as indicative rather than lab-grade — I'd confirm against your real Core Web Vitals — but the megabyte of HTML and the 92 scripts are facts, not measurements, and both point the same way.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Audit the app stack, defer what isn't critical, and cut the inline JavaScript. This is where my background is directly useful.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">TEC-02</span><span class="chip med">Medium</span>
+            <h4>You're paying two vendors to record the same sessions</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>Microsoft Clarity and FullStory both load on every page, alongside GTM, the Meta pixel, Searchanise, Judge.me and Ahrefs analytics.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Two session-recording tools doing the same job, both costing page weight, and I'd guess only one is actually being watched.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Pick one, remove the other. Clarity is free and adequate for most of what you'd want.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">TEC-03</span><span class="chip med">Medium</span>
+            <h4>Filter code is served to pages that display no filters</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd><code>collection-filter.css</code> and <code>collection-filter.js</code> load on <em>In-Car Entertainment</em>, which renders no filter UI.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Small in bytes, but it's a reliable signal that the filter rollout was started and abandoned partway. Worth knowing before anyone quotes you for "building filtering".</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Resolved automatically by fixing NAV-01.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">TEC-04</span><span class="chip med">Medium</span>
+            <h4>Nearly half the homepage images have no alt text</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd><strong>35 of 80</strong> images on the homepage have no alt attribute or an empty one.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Accessibility obligation, lost image search traffic, and for a business selling on visual product recognition, Google Images is not nothing.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Template alt text from product titles, hand-write the banners.</dd></div>
+          </dl>
+        </div>
+      </div>
+
+      <!-- COMMERCIAL -->
+      <div class="group-head">
+        <h3>Conversion &amp; commercial</h3>
+        <span class="count">2 findings</span>
+      </div>
+      <div class="finds">
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">CVR-01</span><span class="chip high">High</span>
+            <h4>You can't book an audio installation online — but you can book an Interlock</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>Code Safe and Interlock both have dedicated booking pages. Code Safe's form captures make, model, preferred date and store location. There is no equivalent path for head units, speakers, amplifiers, dash cams or reversing cameras.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>This is your structural advantage over the entire competitive set, and it's switched off for your biggest categories. Jaycar <em>explicitly refuses</em> to install and tells customers to go find a local installer — that is a referral stream you are not catching. Strathfield's booking page is a name-and-phone lead form. Bankstown Sound makes you ring the shop. Automotive Superstore and JB Hi-Fi don't fit anything at all.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">Clone the Code Safe booking pattern for car audio fitting, with indicative pricing. You already have the form, the workshop and the technicians.</dd></div>
+          </dl>
+        </div>
+
+        <div class="find">
+          <div class="find__top"><span class="find__code">CVR-02</span><span class="chip good">Strength</span>
+            <h4>Nobody in your competitive set can do what your workshop does</h4></div>
+          <dl class="find__body">
+            <div class="row ev"><dt>Evidence</dt><dd>Of the seven competitors named: two are national retailers who don't install, one explicitly refuses to install, and the three specialists who do install all handle it by phone or a basic contact form.</dd></div>
+            <div class="row"><dt>Impact</dt><dd>Supply-and-fit, done properly online, is defensible in a way that price is not. It's also the part of the business a competitor can't replicate by discounting.</dd></div>
+            <div class="row"><dt>Fix</dt><dd class="fixtext">No fix needed — this is what the rest of the plan should be built around.</dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <section id="market">
+      <div class="sec-head"><span class="num">05</span></div>
+      <h2>Where you sit against the seven</h2>
+      <p class="lede">I looked at every competitor on your list. The short version: the national chains beat you on logistics and spec data, the specialists beat you on content, and <em>nobody</em> has put fitment, technical data, content and bookable installation together in one place.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Retailer</th>
+              <th>Platform</th>
+              <th>Fitment tool</th>
+              <th>Spec depth</th>
+              <th>Content</th>
+              <th>Installation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="us">
+              <td class="name">Frankie's</td>
+              <td>Shopify</td>
+              <td><span class="no">None</span> — parts built</td>
+              <td>Prose only</td>
+              <td><span class="no">2 articles</span></td>
+              <td><span class="part">Workshop, not bookable online</span></td>
+            </tr>
+            <tr>
+              <td class="name">Automotive Superstore</td>
+              <td>Magento</td>
+              <td><span class="yes">Rego + state lookup</span>, persists sitewide</td>
+              <td>Structured</td>
+              <td>Stale, 2019-era</td>
+              <td><span class="no">Doesn't install</span></td>
+            </tr>
+            <tr>
+              <td class="name">JB Hi-Fi</td>
+              <td>Shopify Plus</td>
+              <td><span class="no">None</span></td>
+              <td><span class="yes">Full grouped tables</span></td>
+              <td><span class="no">None for car audio</span></td>
+              <td><span class="no">Doesn't install</span></td>
+            </tr>
+            <tr>
+              <td class="name">Jaycar</td>
+              <td>Custom headless</td>
+              <td><span class="no">None</span></td>
+              <td><span class="yes">Thiele-Small, PDFs, dimensions</span></td>
+              <td>172 articles, thin on car audio</td>
+              <td><span class="no">Explicitly refuses</span></td>
+            </tr>
+            <tr>
+              <td class="name">Autobarn</td>
+              <td>Group platform*</td>
+              <td><span class="part">Likely — unverified*</span></td>
+              <td>Unverified*</td>
+              <td><span class="yes">~50 "Know How" articles</span></td>
+              <td><span class="yes">Lifetime install warranty</span></td>
+            </tr>
+            <tr>
+              <td class="name">Strathfield</td>
+              <td>BigCommerce</td>
+              <td><span class="no">Advertised but broken</span></td>
+              <td>Basic</td>
+              <td><span class="yes">Weekly install case studies</span></td>
+              <td><span class="part">Lead form, no calendar</span></td>
+            </tr>
+            <tr>
+              <td class="name">Bankstown Sound</td>
+              <td>Shopify</td>
+              <td><span class="no">None</span></td>
+              <td><span class="no">No spec table, 1 image</span></td>
+              <td>10 articles, one vehicle guide</td>
+              <td><span class="part">Phone only</span></td>
+            </tr>
+            <tr>
+              <td class="name">Elite Car Audio</td>
+              <td>Rocketspark</td>
+              <td><span class="no">None</span></td>
+              <td>Decent, incl. mounting depth</td>
+              <td><span class="no">Blog broken/empty</span></td>
+              <td><span class="part">Generic contact form</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:13.5px;color:var(--ink-3);margin-top:12px;font-family:'IBM Plex Mono',monospace;">* Autobarn blocks automated access. Their content hub and installation warranty are confirmed; platform, fitment and pricing are inferred from their sibling site and should be checked manually before anyone relies on them.</p>
+
+      <div class="callout">
+        <h3>The three things worth stealing outright</h3>
+        <p><strong>From Jaycar:</strong> a Downloads block on every product page with the manufacturer's manual, datasheet and wiring diagram. On Shopify that's a metafield and a snippet. Nobody else in your set does it, and it's exactly what someone searches for at 9pm mid-install.<br><br><strong>From Strathfield:</strong> selling complete vehicle-specific kits as single products — "Toyota Prado GXL 2018-2020, 9-inch CarPlay, fitted" — which captures long-tail search without any fitment technology at all.<br><br><strong>From Bankstown Sound:</strong> the vehicle upgrade guide format, done better by naming the model years they leave out and linking each guide from its matching collection.</p>
+      </div>
+    </section>
+
+    <section id="plan">
+      <div class="sec-head"><span class="num">06</span></div>
+      <h2>What I'd do in the first 90 days</h2>
+      <p class="lede">Sequenced so the cheap, high-certainty work funds the credibility for the bigger pieces. I'd expect to revise all of this in week one once I can see the actual numbers.</p>
+
+      <div class="plan">
+
+        <div class="phase">
+          <div class="phase__head"><span class="phase__days">Days 1–30</span><h3>Measure, then fix what's already broken</h3></div>
+          <p>No new projects. Establish the baseline and clear the errors that cost nothing to fix.</p>
+          <ul>
+            <li><strong>Get the numbers.</strong> Revenue, margin, conversion rate, AOV, ad spend and ROAS by channel, top 100 products by revenue and by margin. Everything after this depends on it.</li>
+            <li><strong>Fix SEO-01 in week one.</strong> The truncated homepage title. Then the contact and about page metadata.</li>
+            <li><strong>Turn the filters on for In-Car Entertainment.</strong> The code is already loading on the page.</li>
+            <li><strong>Clean the make list</strong> — merge Mercedes, fix Landrover, remove Falcon — before it gets rolled out anywhere else.</li>
+            <li><strong>Audit the app stack.</strong> Drop one of the two session recorders, defer non-critical scripts, and get a real Core Web Vitals baseline.</li>
+            <li><strong>Switch on review requests</strong> so Judge.me starts collecting against 30 years of customers.</li>
+          </ul>
+          <div class="measure"><b>How you'd judge it</b>Baseline dashboard exists and is agreed. Homepage title fixed. Largest category filterable. Page weight down measurably.</div>
+        </div>
+
+        <div class="phase">
+          <div class="phase__head"><span class="phase__days">Days 31–60</span><h3>Roll out fitment</h3></div>
+          <p>The one piece of work that changes the shape of the business rather than tidying it.</p>
+          <ul>
+            <li><strong>Backfill <code>custom.make</code> and add model and year</strong> by parsing the fitment data already sitting in product titles. Machine-assisted, human-checked on a sample before it goes live.</li>
+            <li><strong>Enable make/model filtering</strong> across every vehicle-relevant collection, not just Fascias.</li>
+            <li><strong>Collapse the 367 product types</strong> to a controlled list and backfill the 20% that have none.</li>
+            <li><strong>Build vehicle landing pages</strong> for the top 10 Illawarra vehicles — Hilux, Ranger, Prado, D-Max, Triton and so on — each one a real page with the products that fit and a fitting price.</li>
+            <li><strong>Add the Downloads block</strong> to product pages, starting with head units.</li>
+          </ul>
+          <div class="measure"><b>How you'd judge it</b>Make filter live sitewide. Ten vehicle pages ranking and converting. Organic entries on vehicle-model queries starting to appear in Search Console.</div>
+        </div>
+
+        <div class="phase">
+          <div class="phase__head"><span class="phase__days">Days 61–90</span><h3>Turn the workshop into an online product</h3></div>
+          <p>Now use the thing none of the seven competitors can copy.</p>
+          <ul>
+            <li><strong>Clone the Code Safe booking flow</strong> for car audio fitting, with indicative pricing so people aren't ringing to ask.</li>
+            <li><strong>Sell supply-and-fit as a single SKU</strong> for the top vehicles — the Strathfield pattern, executed better because you actually run the workshop.</li>
+            <li><strong>Publish vehicle upgrade guides</strong> on a fixed cadence, each linked from its collection and each naming the model years.</li>
+            <li><strong>Spec tables on the top categories</strong>, which then unlock technical filters — RMS power, DIN size, screen size.</li>
+            <li><strong>Reset the advertising</strong> against the new landing pages, reported on spend, sales and margin rather than impressions.</li>
+          </ul>
+          <div class="measure"><b>How you'd judge it</b>Installation bookings arriving through the site. Supply-and-fit AOV vs product-only AOV. Ad spend traceable to gross profit, not clicks.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="need">
+      <div class="sec-head"><span class="num">07</span></div>
+      <h2>What I'd need — and what I'd want help with</h2>
+      <p class="lede">The job ad covers eight disciplines. I'm strong in four of them and I'd rather say so now than discover it in month six.</p>
+
+      <div class="cols">
+        <div class="card">
+          <h4>Where I'm strongest</h4>
+          <p>Technical and data. Site performance, Shopify build work, technical SEO, structured data, filtering and metafield architecture, conversion diagnosis, and reading analytics to work out where the money is leaking. Everything in this document came out of that skill set — and it's the foundation the rest of the list sits on.</p>
+        </div>
+        <div class="card">
+          <h4>Where I'd want support</h4>
+          <p>Paid campaign strategy, ad creative, and commercial pricing calls need industry judgement rather than technical skill. AI tooling closes a lot of that gap now — drafting, campaign structure, first-pass competitor and pricing analysis — but I'd still want someone with real automotive marketing experience in the loop, even part-time, to sanity-check positioning. I'd rather build that in from day one than pretend it isn't needed.</p>
+        </div>
+        <div class="card">
+          <h4>Access I'd need</h4>
+          <ul>
+            <li>Shopify admin and theme access</li>
+            <li>GA4, Search Console, Merchant Center</li>
+            <li>Google Ads and Meta accounts</li>
+            <li>Cost and margin data by product</li>
+            <li>Supplier feeds and how product data currently arrives</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>Decisions I'd need from you</h4>
+          <ul>
+            <li>Can I change prices, and up to what threshold?</li>
+            <li>Can I reallocate ad spend within an agreed budget?</li>
+            <li>Is there budget for freelance help — dev, copy, photography, data entry?</li>
+            <li>What are the top three priorities if not everything can happen at once?</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout">
+        <h3>One honest note on scale</h3>
+        <p>17,491 products is a lot of catalogue for one person. Checking part number, description, specs, images, application and category on every product at ten minutes each is roughly 2,900 hours — well over a year of full-time work doing nothing else. That's why the plan above fixes the <em>systems</em> that make the catalogue better at scale, and only hand-works the top few hundred products by revenue. Anyone who tells you they'll manually perfect all 17,491 either hasn't done the arithmetic or isn't planning to.</p>
+      </div>
+    </section>
+
+    <section id="method">
+      <div class="sec-head"><span class="num">08</span></div>
+      <h2>Method, and what I couldn't see</h2>
+
+      <div class="method">
+        <h4>How this was produced</h4>
+        <p>Everything here was measured from public pages on 31 August 2026 — no admin access, no analytics, no conversations with anyone at Frankie's. Catalogue statistics come from a 3,000-product sample drawn evenly across the full catalogue. Filter, metadata, structured data and page-weight figures were read directly from the live HTML. Competitor findings come from their live sites.</p>
+      </div>
+
+      <div class="method">
+        <h4>What I'd want to check before anyone acts on this</h4>
+        <ul>
+          <li><strong>Performance figures are indicative, not lab-grade.</strong> They're single measurements from one browser on one connection. The megabyte of HTML and the 92 script tags are hard facts; the load times need confirming against your real Core Web Vitals data.</li>
+          <li><strong>Autobarn blocks automated access.</strong> Their content library and installation warranty are confirmed from pages that did load. Platform, fitment selector and pricing are inferred from a sibling site and are flagged as unverified throughout.</li>
+          <li><strong>"Bankstown" was interpreted as Bankstown Sound</strong> on Marion Street — the only car audio business in that suburb with a substantial transactional site. If you meant a different shop, that section is about the wrong business and I'd redo it.</li>
+          <li><strong>Sampling is sampling.</strong> The 66% single-image and 20.8% missing-product-type figures come from 3,000 products, not all 17,491. I'd expect them to hold, but I'd verify against the full export before building a plan on them.</li>
+          <li><strong>I can't see the commercial picture at all.</strong> No revenue, margin, traffic, conversion or ad performance data. Some of what looks like a problem from outside may already be understood, deliberate, or not worth fixing. That's the first conversation, not an assumption I'd make.</li>
+        </ul>
+      </div>
+
+      <footer>
+        <p>Prepared by RM as an unsolicited work sample for the E-Commerce &amp; Digital Growth Manager role at Frankie's Auto Electrics. Happy to walk through any finding, or to be told I've got one wrong — either way it's a better first conversation than a résumé.</p>
+      </footer>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('#nav a'));
+    var sections = links.map(function (a) { return document.querySelector(a.getAttribute('href')); });
+    function sync() {
+      var y = window.scrollY + 140;
+      var idx = 0;
+      for (var i = 0; i < sections.length; i++) {
+        if (sections[i] && sections[i].offsetTop <= y) idx = i;
+      }
+      links.forEach(function (a, i) { a.classList.toggle('on', i === idx); });
+    }
+    var ticking = false;
+    window.addEventListener('scroll', function () {
+      if (!ticking) { window.requestAnimationFrame(function () { sync(); ticking = false; }); ticking = true; }
+    }, { passive: true });
+    sync();
+  })();
+</script>
+</body>
+</html>
